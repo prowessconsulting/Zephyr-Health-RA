@@ -40,10 +40,20 @@
 #define DEVICE_NAME		"nV Zephyr Heartrate Sensor"
 #define DEVICE_NAME_LEN		(sizeof(DEVICE_NAME) - 1)
 
-QUARK_SE_IPM_DEFINE(hrs_sensor_ipm, 0, QUARK_SE_IPM_INBOUND);
-QUARK_SE_IPM_DEFINE(temp_sensor_ipm, 1, QUARK_SE_IPM_INBOUND);
-QUARK_SE_IPM_DEFINE(accel_sensor_ipm, 2, QUARK_SE_IPM_INBOUND);
-QUARK_SE_IPM_DEFINE(gyro_sensor_ipm, 3, QUARK_SE_IPM_INBOUND);
+QUARK_SE_IPM_DEFINE(health_sensor_ipm, 0, QUARK_SE_IPM_INBOUND);
+
+struct health_data
+{
+	uint8_t heartrate;
+	uint8_t spo2;
+	int16_t temperature;
+	int16_t gyro_x;
+	int16_t gyro_y;
+	int16_t gyro_z;
+	int16_t accel_x;
+	int16_t accel_y;
+	int16_t accel_z;
+};
 
 // START: GATT stuff
 // GATT includes
@@ -68,25 +78,14 @@ static void start_gatt()
 
 // START: IPM stuff
 // add 'watch' for sensor messages
-void hrs_ipm_callback(void *context, uint32_t id, volatile void *data)
+void health_ipm_callback(void *context, uint32_t id, volatile void *data_ptr)
 {
-	// We know what is in here
-	hrs_notify( (uint8_t*) data );
-}
+    struct health_data *data;
+	data = (struct health_data*)data_ptr;
+    
+	hrs_notify(data->heartrate);
+	ess_temp_notify(data->temperature);
 
-void temp_ipm_callback(void *context, uint32_t id, volatile void *data){
-	struct sensor_value* sensor_data_pst = (struct sensor_value*) data;
-	ess_temp_notify(sensor_data_pst);
-}
-
-void accel_ipm_callback(void *context, uint32_t id, volatile void *data){
-	struct sensor_value* sensor_data_pst = (struct sensor_value*) data;
-	ess_accel_notify(sensor_data_pst, id - IPM_ID_ACCEL);
-}
-
-void gyro_ipm_callback(void *context, uint32_t id, volatile void *data){
-	struct sensor_value* sensor_data_pst = (struct sensor_value*) data;
-	ess_gyro_notify(sensor_data_pst, id - IPM_ID_GYRO);
 }
 
 // END: IPM stuff
@@ -171,7 +170,7 @@ static struct bt_conn_auth_cb auth_cb_display = {
 void main(void)
 {
 	int err;
-	struct device *hrs_ipm, *temp_ipm, *accel_ipm, *gyro_ipm;
+	struct device *health_ipm;
 
 	err = bt_enable(bt_ready);
 	if (err) {
@@ -184,42 +183,18 @@ void main(void)
 
 
 	printk("START: device_get_binding\n");
-	hrs_ipm = device_get_binding("hrs_sensor_ipm");
-	if (!hrs_ipm)
-	{
-		printk("IPM: Device not found.\n");
-		return;
-	}
-	temp_ipm = device_get_binding("temp_sensor_ipm");
-	if (!temp_ipm)
-	{
-		printk("IPM: Device not found.\n");
-		return;
-	}
-	accel_ipm = device_get_binding("accel_sensor_ipm");
-	if (!accel_ipm)
-	{
-		printk("IPM: Device not found.\n");
-		return;
-	}
-	gyro_ipm = device_get_binding("gyro_sensor_ipm");
-	if (!gyro_ipm)
+	health_ipm = device_get_binding("health_sensor_ipm");
+	if (!health_ipm)
 	{
 		printk("IPM: Device not found.\n");
 		return;
 	}
 
 	printk("START: ipm_register_callback\n");
-	ipm_register_callback(hrs_ipm, hrs_ipm_callback, NULL);
-	ipm_register_callback(temp_ipm, temp_ipm_callback, NULL);
-	ipm_register_callback(accel_ipm, accel_ipm_callback, NULL);
-	ipm_register_callback(gyro_ipm, gyro_ipm_callback, NULL);
+	ipm_register_callback(health_ipm, health_ipm_callback, NULL);
 
 	printk("START: ipm_set_enabled\n");
-	ipm_set_enabled(hrs_ipm, 1);
-	ipm_set_enabled(temp_ipm, 1);
-	ipm_set_enabled(accel_ipm, 1);
-	ipm_set_enabled(gyro_ipm, 1);
+	ipm_set_enabled(health_ipm, 1);
 
 	task_sleep(TICKS_UNLIMITED);
 }

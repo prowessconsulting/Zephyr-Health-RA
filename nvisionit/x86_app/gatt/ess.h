@@ -34,6 +34,6 @@
  #include <sensor.h>
 
 void ess_init(void);
-void ess_gyro_notify(struct sensor_value* value, uint32_t axis);
-void ess_accel_notify(struct sensor_value* value, uint32_t axis);
-void ess_temp_notify(struct sensor_value* value);
+void ess_gyro_notify(int16_t x_axis, int16_t y_axis, int16_t z_axis);
+void ess_accel_notify(int16_t x_axis, int16_t y_axis, int16_t z_axis);
+void ess_temp_notify(int16_t temp);

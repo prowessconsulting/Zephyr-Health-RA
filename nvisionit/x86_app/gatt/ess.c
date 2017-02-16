@@ -27,8 +27,8 @@ static uint8_t simulate_blvl;
 static char ess_humidity = 2;
 static char ess_pressure = 3;
 
-static int64_t ess_accel[3];
-static int64_t ess_gyro[3];
+static int16_t ess_accel[3];
+static int16_t ess_gyro[3];
 static int16_t ess_temp;
 
 /**
@@ -117,12 +117,6 @@ static struct bt_gatt_attr attrs[] = {
 	BT_GATT_CHARACTERISTIC(BT_UUID_ESS_TEMPERATURE, BT_GATT_CHRC_READ),
 	BT_GATT_DESCRIPTOR(BT_UUID_ESS_TEMPERATURE, BT_GATT_PERM_READ, read_temperature, NULL, NULL),
 
-	BT_GATT_CHARACTERISTIC(BT_UUID_ESS_HUMIDITY, BT_GATT_CHRC_READ),
-	BT_GATT_DESCRIPTOR(BT_UUID_ESS_HUMIDITY, BT_GATT_PERM_READ, read_humidity, NULL, NULL),
-
-	BT_GATT_CHARACTERISTIC(BT_UUID_ESS_PRESSURE, BT_GATT_CHRC_READ),
-	BT_GATT_DESCRIPTOR(BT_UUID_ESS_PRESSURE, BT_GATT_PERM_READ, read_pressure, NULL, NULL),
-
 	BT_GATT_CHARACTERISTIC(BT_UUID_ESS_GYRO, BT_GATT_CHRC_READ),
 	BT_GATT_DESCRIPTOR(BT_UUID_ESS_GYRO, BT_GATT_PERM_READ, read_gyrometer, NULL, NULL),
 
@@ -135,17 +129,21 @@ void ess_init(void)
 	bt_gatt_register(attrs, ARRAY_SIZE(attrs));
 }
 
-void ess_gyro_notify(struct sensor_value* value, uint32_t axis)
+void ess_gyro_notify(int16_t x_axis, int16_t y_axis, int16_t z_axis)
 {
-	ess_gyro[axis] = ((uint64_t) value->val1) << 32 | value->val2;
+	ess_gyro[0] = x_axis;
+	ess_gyro[1] = y_axis;
+	ess_gyro[2] = z_axis;
 };
 
-void ess_accel_notify(struct sensor_value* value, uint32_t axis)
+void ess_accel_notify(int16_t x_axis, int16_t y_axis, int16_t z_axis)
 {
-	ess_accel[axis] = ((uint64_t) value->val1) << 32 | value->val2;
+	ess_accel[0] = x_axis;
+	ess_accel[1] = y_axis;
+	ess_accel[2] = z_axis;
 };
 
-void ess_temp_notify(struct sensor_value* value)
+void ess_temp_notify(int16_t temp)
 {
-	ess_temp = (value->val1 * 100) + (value->val2 / 10000);
+	ess_temp = temp;
 };

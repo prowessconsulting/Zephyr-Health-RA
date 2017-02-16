@@ -20,7 +20,7 @@
 #include <stdio.h>
 #include <device.h>
 #include <sensor.h>
-#include <adc.h>
+#include <max30100_pulse_oximeter.h>
 
 #include <ipm.h>
 #include <ipm/ipm_quark_se.h>
@@ -36,155 +36,87 @@
 #include <bmi160.h>
 #include <heartrate.h>
 
-/* measure every 2ms */
-#define INTERVAL_HRS 	2
-#define INTERVAL 	320
-#define INTERVAL_TEMP 1000
+#define INTERVAL_HRS 500
 
+QUARK_SE_IPM_DEFINE(health_sensor_ipm, 0, QUARK_SE_IPM_OUTBOUND);
 
-QUARK_SE_IPM_DEFINE(hrs_sensor_ipm, 0, QUARK_SE_IPM_OUTBOUND);
-QUARK_SE_IPM_DEFINE(temp_sensor_ipm, 1, QUARK_SE_IPM_OUTBOUND);
-QUARK_SE_IPM_DEFINE(accel_sensor_ipm, 2, QUARK_SE_IPM_OUTBOUND);
-QUARK_SE_IPM_DEFINE(gyro_sensor_ipm, 3, QUARK_SE_IPM_OUTBOUND);
+struct device *i2c_dev;
+struct device *health_ipm;
 
+struct sensor_value accel_sensor_value_ast[3];
+struct sensor_value gyro_sensor_value_ast[3];
 
-// START Heartrate sensor variables
-#define ADC_DEVICE_NAME "ADC_0"
-#define ADC_CHANNEL 	12
-#define ADC_BUFFER_SIZE 4
-
-struct device *adc;
-
-static uint8_t seq_buffer[ADC_BUFFER_SIZE];
-
-static struct adc_seq_entry sample = {
-	.sampling_delay = 12,
-	.channel_id = ADC_CHANNEL,
-	.buffer = seq_buffer,
-	.buffer_length = ADC_BUFFER_SIZE,
+struct health_data
+{
+	uint8_t heartrate;
+	uint8_t spo2;
+	int16_t temperature;
+	int16_t gyro_x;
+	int16_t gyro_y;
+	int16_t gyro_z;
+	int16_t accel_x;
+	int16_t accel_y;
+	int16_t accel_z;
 };
-
-static struct adc_seq_table table = {
-	.entries = &sample,
-	.num_entries = 1,
-};
-
-uint8_t heartrate_u8;
-// END Heartrate sensor variables
-
-extern void poll_hrs(struct k_timer *timer_id){
-	if (adc_read(adc, &table) == 0) {
-
-		uint32_t signal = *((uint32_t*)seq_buffer); // This is faster than bit shifting, no math, just dereference.
-		signal = signal & 0xFFF;
-		uint32_t value = measure_heartrate(signal);
-		if (value > 0) {
-			heartrate_u8 = value;
-		}
-	}
-}
-
-K_TIMER_DEFINE(hrs_timer, poll_hrs, NULL);
-
 
 void main(void)
 {
-	struct device *hrs_ipm, *temp_ipm, *accel_ipm, *gyro_ipm;
-	int ret;
+    int ret;
 
-	/* Initialize the IPM */
-	hrs_ipm = device_get_binding("hrs_sensor_ipm");
-	if (!hrs_ipm) {
+    // Get the devices
+    i2c_dev = device_get_binding("I2C_0");
+    if (!i2c_dev)
+    {
+	printk("Error getting I2C device.\n");
+    }
+
+    /* Initialize the IPM */
+    health_ipm = device_get_binding("health_sensor_ipm");
+    if (!health_ipm)
+    {
 		printk("IPM: Device not found.\n");
-	}
+    }
 
-	temp_ipm = device_get_binding("temp_sensor_ipm");
-	if (!temp_ipm) {
-		printk("IPM: Device not found.\n");
-	}
+    bmi160_sensor_init();
+	
+	printk("Initializing the MAX30100\n");
+	printk("Initializing the MAX30100 Pulse Oximeter\n");
+	max30100_init(i2c_dev);
+	max30100_pulse_oximeter_init(i2c_dev);
+   
+	printk("Polling the MAX30100\n");
 
-	accel_ipm = device_get_binding("accel_sensor_ipm");
-	if (!accel_ipm) {
-		printk("IPM: Device not found.\n");
-	}
+	struct health_data data;
 
-	gyro_ipm = device_get_binding("gyro_sensor_ipm");
-	if (!gyro_ipm) {
-		printk("IPM: Device not found.\n");
-	}
+    uint64_t lastSampleTime = 0;
+	while(1){
+	    time = k_uptime_get();
+	    max30100_pulse_oximeter_update(i2c_dev);
 
-	adc = device_get_binding(ADC_DEVICE_NAME);
-	if (!adc) {
-		printk("ADC Controller: Device not found.\n");
-		return;
-	}
-	adc_enable(adc);
+		if((time - lastSampleTime) > 500)
+		{
+			sample_update();
 
-	bmi160_sensor_init();
+			get_accel_data(accel_sensor_value_ast);
+			get_gyro_data(gyro_sensor_value_ast);
 
-	k_timer_start(&hrs_timer, K_MSEC(INTERVAL_HRS), K_MSEC(INTERVAL_HRS));
+			data.heartrate = max30100_pulse_oximeter_heartrate;
+			data.spo2 = max30100_pulse_oximeter_spo2;
+			data.temperature = max30100_pulse_oximeter_temperature;
+			data.gyro_x = 0;
+			data.gyro_y = 0;
+			data.gyro_z = 0;
+			data.accel_x = 0;
+			data.accel_y = 0;
+			data.accel_z = 0;
+			
+			ret = ipm_send(health_ipm, 1, IPM_ID_BMI_ALL, &data, sizeof(data));
+			if (ret)
+			{
+				printk("Failed to send Health message, error (%d)\n", ret);
+			}
 
-	struct sensor_value accel_sensor_value_ast[3];
-	struct sensor_value gyro_sensor_value_ast[3];
-	struct sensor_value temp_sensor_value_st;
-
-	while (hrs_ipm) {
-		sample_update();
-
-		get_temp_data(&temp_sensor_value_st);
-		get_accel_data(accel_sensor_value_ast);
-		get_gyro_data(gyro_sensor_value_ast);
-
-		// /* send data over ipm to x86 side */
-		ret = ipm_send(hrs_ipm, 1, IPM_ID_BMI_ALL, &heartrate_u8, sizeof(heartrate_u8));
-		if (ret) {
-			printk("Failed to send IPM_ID_BMI_ALL message, error (%d)\n", ret);
+			lastSampleTime = time;			
 		}
-		k_sleep(INTERVAL / 8);
-
-		ret = ipm_send(temp_ipm, 1, IPM_ID_BMI_ALL, &temp_sensor_value_st, sizeof(temp_sensor_value_st));
-		if (ret) {
-			printk("Failed to send IPM_ID_BMI_ALL message, error (%d)\n", ret);
-		}
-		k_sleep(INTERVAL / 8);
-
-		ret = ipm_send(accel_ipm, 1, IPM_ID_ACCEL_X, &accel_sensor_value_ast[0], sizeof(struct sensor_value));
-		if (ret) {
-			printk("Failed to send IPM_ID_ACCEL_X message, error (%d)\n", ret);
-		}
-		k_sleep(INTERVAL / 8);
-
-		ret = ipm_send(accel_ipm, 1, IPM_ID_ACCEL_Y, &accel_sensor_value_ast[1], sizeof(struct sensor_value));
-		if (ret) {
-			printk("Failed to send IPM_ID_ACCEL_Y message, error (%d)\n", ret);
-		}
-		k_sleep(INTERVAL / 8);
-
-		ret = ipm_send(accel_ipm, 1, IPM_ID_ACCEL_Z, &accel_sensor_value_ast[2], sizeof(struct sensor_value));
-		if (ret) {
-			printk("Failed to send IPM_ID_ACCEL_Z message, error (%d)\n", ret);
-		}
-		k_sleep(INTERVAL / 8);
-
-		ret = ipm_send(gyro_ipm, 1, IPM_ID_GYRO_X, &gyro_sensor_value_ast[0], sizeof(struct sensor_value));
-		if (ret) {
-			printk("Failed to send IPM_ID_GYRO_X message, error (%d)\n", ret);
-		}
-		k_sleep(INTERVAL / 8);
-
-		ret = ipm_send(gyro_ipm, 1, IPM_ID_GYRO_Y, &gyro_sensor_value_ast[1], sizeof(struct sensor_value));
-		if (ret) {
-			printk("Failed to send IPM_ID_GYRO_Y message, error (%d)\n", ret);
-		}
-		k_sleep(INTERVAL / 8);
-
-		ret = ipm_send(gyro_ipm, 1, IPM_ID_GYRO_Z, &gyro_sensor_value_ast[2], sizeof(struct sensor_value));
-		if (ret) {
-			printk("Failed to send IPM_ID_GYRO_Z message, error (%d)\n", ret);
-		}
-
-	}
-
-	adc_disable(adc);
-
+	}	
 }
