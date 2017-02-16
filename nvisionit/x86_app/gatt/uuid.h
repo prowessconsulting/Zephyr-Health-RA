@@ -64,4 +64,23 @@
 #define BT_UUID_ESS_ACCELEROMETER           BT_UUID_DECLARE_16(0x3001)
 #define BT_UUID_ESS_ACCELEROMETER_VAL       0x3001
 
+/** @def BT_UUID_ESS_ACCEL
+*  @brief ESS Characteristic Accelerometer - custom characteristic
+*/
+#define BT_UUID_ESS_ACCELEROMETER           BT_UUID_DECLARE_16(0x3001)
+#define BT_UUID_ESS_ACCELEROMETER_VAL       0x3001
+
+/** @def BT_UUID_POS
+*  @brief Pulse Oximeter Service (https://www.bluetooth.com/specifications/gatt/viewer?attributeXmlFile=org.bluetooth.service.environmental_sensing.xml)
+*/
+#define BT_UUID_POS                       BT_UUID_DECLARE_16(0x1822)
+#define BT_UUID_POS_VAL                   0x1822
+
+/** @def BT_UUID_POS_PLX_CONTINUOUS
+*  @brief Pulse Oximeter Service (https://www.bluetooth.com/specifications/gatt/viewer?attributeXmlFile=org.bluetooth.service.environmental_sensing.xml)
+*/
+#define BT_UUID_POS_PLX_CONTINUOUS        BT_UUID_DECLARE_16(0x2A5F)
+#define BT_UUID_POS_PLX_CONTINUOUS_VAL    0x2A5F
+
+
 #endif
