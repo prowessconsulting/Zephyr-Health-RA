@@ -59,6 +59,7 @@ struct health_data
 // GATT includes
 #include <gatt/gap.h>
 #include <gatt/hrs.h>
+#include <gatt/pos.h>
 #include <gatt/bas.h>
 #include <gatt/ess.h>
 
@@ -70,6 +71,7 @@ static void start_gatt()
 {
 	gap_init(DEVICE_NAME, GAP_APPEARANCE);
 	hrs_init(0x01);
+	pos_init(0x01);
 	bas_init();
 	ess_init();
 	dis_init(CONFIG_SOC, "Manufacturer");
@@ -84,8 +86,11 @@ void health_ipm_callback(void *context, uint32_t id, volatile void *data_ptr)
 	data = (struct health_data*)data_ptr;
     
 	hrs_notify(data->heartrate);
-	ess_temp_notify(data->temperature);
+	pos_notify(data->spo2, data->heartrate);
 
+	ess_temp_notify(data->temperature);
+	ess_gyro_notify(data->gyro_x, data->gyro_y, data->gyro_z);
+	ess_accel_notify(data->accel_x, data->accel_y, data->accel_z);
 }
 
 // END: IPM stuff

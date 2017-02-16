@@ -10,4 +10,5 @@ obj-y = main.o \
 ../../gatt/dis.o \
 ../../gatt/bas.o \
 ../../gatt/aios.o \
-../../gatt/ess.o
+../../gatt/ess.o \
+../../gatt/pos.o
