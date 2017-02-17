@@ -6,18 +6,20 @@ static const uint8_t spO2LUT[43] = {100, 100, 100, 100, 99, 99, 99, 99, 99, 99, 
 
 double irACValueSqSum;
 double redACValueSqSum;
+
+double log_10 = 2.30258509299;
 uint8_t beatsDetectedNum;
 uint32_t samplesRecorded;
 uint8_t spO2;
 
-// Simple log
-double log(double x)
+// Simple ln
+double ln(double x)
 {
     int i, j;
     double sum = 0.0f;
     double power;
 
-    for (i = 1; i <= 16; i++)
+    for (i = 1; i <= 7; i++)
     { 
         power = 1.0f;
         for (j = 0; j < i; j++)
@@ -29,10 +31,15 @@ double log(double x)
     return sum;
 }
 
+// Simple log
+double log(double x){
+    return ln(x) / log_10;
+}
+
 void max30100_spo2_calculator_update(float led_ir_ac_value, float led_red_ac_value, bool beat_detected)
 {
-    irACValueSqSum += led_ir_ac_value * led_ir_ac_value;
-    redACValueSqSum += led_red_ac_value * led_red_ac_value;
+    irACValueSqSum += (led_ir_ac_value * led_ir_ac_value);
+    redACValueSqSum += (led_red_ac_value * led_red_ac_value);
     ++samplesRecorded;
 
     if (beat_detected)
