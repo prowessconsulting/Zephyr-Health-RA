@@ -59,6 +59,50 @@ struct health_data
 	int16_t accel_z;
 };
 
+static inline int16_t sensor_value_normalize(struct sensor_value *val)
+{
+	int32_t val1, val2;
+
+	double value;
+
+	switch (val->type) {
+	case SENSOR_VALUE_TYPE_INT:
+		value = (double) val->val1;
+	case SENSOR_VALUE_TYPE_INT_PLUS_MICRO:
+		if (val->val2 == 0) {
+			value =  (double) val->val1;
+		}
+
+		/* normalize value */
+		if (val->val1 < 0 && val->val2 > 0) {
+			val1 = val->val1 + 1;
+			val2 = val->val2 - 1000000;
+		} else {
+			val1 = val->val1;
+			val2 = val->val2;
+		}
+
+		/* print value to buffer */
+		if (val1 > 0 || (val1 == 0 && val2 > 0)) {
+			value =  val1 + val2 / 1000000;
+		} else if (val1 == 0 && val2 < 0) {
+			value =  val2 / -1000000;
+		} else {
+			value =  val1 + val2 / -1000000;
+		}
+	case SENSOR_VALUE_TYPE_DOUBLE:
+		value =  val->dval;
+	default:
+		value =  0;
+	}
+
+	if(value < 0){
+		value = -value;
+	}
+
+	return (int16_t) (value * 1000);
+}
+
 void main(void)
 {
     int ret;
@@ -92,29 +136,40 @@ void main(void)
 	while(1){
 	    time = k_uptime_get();
 	    max30100_pulse_oximeter_update(i2c_dev);
+		if((time - lastSampleTime) > 50)
+		{		
+			if(sample_update() >= 0)
+			{
+				get_accel_data(accel_sensor_value_ast);
+				get_gyro_data(gyro_sensor_value_ast);	
+				data.gyro_x = max(sensor_value_normalize(&(gyro_sensor_value_ast[0])), data.gyro_x);
+				data.gyro_y = max(sensor_value_normalize(&(gyro_sensor_value_ast[1])), data.gyro_y);
+				data.gyro_z = max(sensor_value_normalize(&(gyro_sensor_value_ast[2])), data.gyro_z);
+				data.accel_x = max(sensor_value_normalize(&(accel_sensor_value_ast[0])), data.accel_x);
+				data.accel_y = max(sensor_value_normalize(&(accel_sensor_value_ast[1])), data.accel_y);
+				data.accel_z = max(sensor_value_normalize(&(accel_sensor_value_ast[2])), data.accel_z);
+			}
+		}
+
 
 		if((time - lastSampleTime) > 500)
-		{
-			sample_update();
-
-			get_accel_data(accel_sensor_value_ast);
-			get_gyro_data(gyro_sensor_value_ast);
-
+		{	
 			data.heartrate = max30100_pulse_oximeter_heartrate;
 			data.spo2 = max30100_pulse_oximeter_spo2;
 			data.temperature = max30100_pulse_oximeter_temperature;
-			data.gyro_x = 0;
-			data.gyro_y = 0;
-			data.gyro_z = 0;
-			data.accel_x = 0;
-			data.accel_y = 0;
-			data.accel_z = 0;
 			
 			ret = ipm_send(health_ipm, 1, IPM_ID_BMI_ALL, &data, sizeof(data));
 			if (ret)
 			{
 				printk("Failed to send Health message, error (%d)\n", ret);
 			}
+
+			data.gyro_x = 0;
+			data.gyro_y = 0;
+			data.gyro_z = 0;
+			data.accel_x = 0;
+			data.accel_y = 0;
+			data.accel_z = 0;
 
 			lastSampleTime = time;			
 		}

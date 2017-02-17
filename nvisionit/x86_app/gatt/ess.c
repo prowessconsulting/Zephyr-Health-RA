@@ -31,54 +31,6 @@ static int16_t ess_accel[3];
 static int16_t ess_gyro[3];
 static int16_t ess_temp;
 
-/**
- * @brief Helper function for printing a sensor value to a buffer
- *
- * @param buf A pointer to the buffer to which the printing is done.
- * @param len Size of buffer in bytes.
- * @param val A pointer to a sensor_value struct holding the value
- *            to be printed.
- *
- * @return The number of characters printed to the buffer.
- */
-static inline double sensor_value_normalize(const struct sensor_value *val)
-{
-	int32_t val1, val2;
-
-	switch (val->type) {
-	case SENSOR_VALUE_TYPE_INT:
-		return (double) val->val1;
-	case SENSOR_VALUE_TYPE_INT_PLUS_MICRO:
-		if (val->val2 == 0) {
-			return (double) val->val1;
-		}
-
-		/* normalize value */
-		if (val->val1 < 0 && val->val2 > 0) {
-			val1 = val->val1 + 1;
-			val2 = val->val2 - 1000000;
-		} else {
-			val1 = val->val1;
-			val2 = val->val2;
-		}
-
-		/* print value to buffer */
-		if (val1 > 0 || (val1 == 0 && val2 > 0)) {
-			return val1 + val2 / 1000000;
-		} else if (val1 == 0 && val2 < 0) {
-			return val2 / -1000000;
-		} else {
-			return val1 + val2 / -1000000;
-		}
-	case SENSOR_VALUE_TYPE_DOUBLE:
-		return val->dval;
-	default:
-		return 0;
-	}
-}
-
-
-
 static void blvl_ccc_cfg_changed(const struct bt_gatt_attr *attr, uint16_t value)
 {
 	simulate_blvl = (value == BT_GATT_CCC_NOTIFY) ? 1 : 0;
