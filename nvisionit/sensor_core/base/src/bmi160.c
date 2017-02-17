@@ -104,10 +104,8 @@ void get_accel_data(struct sensor_value* sensor_data_ps){
 	}
 }
 
-void sample_update () {
-	if (sensor_sample_fetch(bmi160) < 0) {
-		printf("Sample update error.\n");
-	}
+int sample_update () {
+	return sensor_sample_fetch(bmi160);
 }
 
 void bmi160_sensor_init()

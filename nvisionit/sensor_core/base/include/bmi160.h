@@ -28,7 +28,7 @@
 
 
 void bmi160_sensor_init(void);
-void sample_update();
+int sample_update();
 void get_gyro_data(struct sensor_value* sensor_data_ps);
 void get_accel_data(struct sensor_value* sensor_data_ps);
 void get_temp_data(struct sensor_value* sensor_data_ps);
