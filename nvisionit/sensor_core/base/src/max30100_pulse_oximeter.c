@@ -18,11 +18,12 @@ uint32_t tsLastTemperaturePoll;
 float beat_detection_filter[2];
 
 // http://sam-koblenski.blogspot.de/2015/11/everyday-dsp-for-programmers-dc-and.html
-float _dc_removal(float x_f32, float *filter_pf32, float alpha_f32)
+float _dc_removal(float x, float *w, float alpha)
 {
-    float dcw = *filter_pf32;
-    *filter_pf32 = (float)(x_f32 + alpha_f32 * dcw);
-    return *filter_pf32 - dcw;
+    float w_n = x + alpha * (*w);
+    float y = w_n - (*w);
+    *w = w_n;
+    return y;
 }
 
 // http://www.schwietering.com/jayduino/filtuino/
