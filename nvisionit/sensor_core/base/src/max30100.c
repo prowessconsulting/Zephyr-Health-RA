@@ -51,15 +51,14 @@ bool max30100_is_temperature_ready(struct device *i2c_dev)
     return !(tempReady & MAX30100_MC_TEMP_EN);
 }
 
+uint8_t temp_stor[2];
+
 float max30100_get_temperature(struct device *i2c_dev)
 {
-    int8_t tempInteger;
-    i2c_reg_read_byte(i2c_dev, MAX30100_I2C_ADDRESS, MAX30100_REG_TEMPERATURE_DATA_INT, &tempInteger);
-    int8_t tempFrac;
-    i2c_reg_read_byte(i2c_dev, MAX30100_I2C_ADDRESS, MAX30100_REG_TEMPERATURE_DATA_FRAC, &tempFrac);
+    i2c_burst_read(i2c_dev, MAX30100_I2C_ADDRESS, MAX30100_REG_TEMPERATURE_DATA_INT, temp_stor, 2);
 
-    float temp = tempInteger;
-    temp += tempFrac * 0.0625f;
+    float temp = temp_stor[0];
+    temp += temp_stor[1] * 0.0625f;
 
     return temp;
 }
