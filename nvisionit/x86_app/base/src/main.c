@@ -40,6 +40,8 @@
 #define DEVICE_NAME		"nV Zephyr Heartrate Sensor"
 #define DEVICE_NAME_LEN		(sizeof(DEVICE_NAME) - 1)
 
+#define HEARTRATE_AVERAGE_COUNT 10
+
 QUARK_SE_IPM_DEFINE(health_sensor_ipm, 0, QUARK_SE_IPM_INBOUND);
 
 struct health_data
@@ -54,6 +56,7 @@ struct health_data
 	int16_t accel_y;
 	int16_t accel_z;
 };
+
 
 // START: GATT stuff
 // GATT includes
@@ -78,6 +81,9 @@ static void start_gatt()
 }
 // END: GATT stuff
 
+uint8_t heartrate_average[HEARTRATE_AVERAGE_COUNT];
+int heartrate_average_pos = 0;
+
 // START: IPM stuff
 // add 'watch' for sensor messages
 void health_ipm_callback(void *context, uint32_t id, volatile void *data_ptr)
@@ -85,7 +91,22 @@ void health_ipm_callback(void *context, uint32_t id, volatile void *data_ptr)
     struct health_data *data;
 	data = (struct health_data*)data_ptr;
     
-	hrs_notify(data->heartrate);
+	if(heartrate_average_pos >= 10)
+	{
+		heartrate_average_pos = 0;
+	}
+	heartrate_average[heartrate_average_pos++] = data->heartrate;
+
+	if(heartrate_average[9] > 0)
+	{
+		int hrs_sum = 0;
+		for(int j = 0; j < 10; j++)
+		{
+			hrs_sum += heartrate_average[j];
+		}
+		hrs_sum /= 10;
+	    hrs_notify((uint8_t)hrs_sum);
+	}
 	pos_notify(data->spo2, data->heartrate);
 
 	ess_temp_notify(data->temperature);
@@ -181,6 +202,10 @@ void main(void)
 	if (err) {
 		printk("Bluetooth init failed (err %d)\n", err);
 		return;
+	}
+	
+	for(heartrate_average_pos = 0; heartrate_average_pos < 10; heartrate_average_pos++){
+		heartrate_average[heartrate_average_pos] = 0; 
 	}
 
 	bt_conn_cb_register(&conn_callbacks);
