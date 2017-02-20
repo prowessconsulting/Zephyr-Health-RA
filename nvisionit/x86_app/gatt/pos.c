@@ -10,8 +10,7 @@ static uint8_t simulate_blvl;
 
 static uint8_t pos_blsc;
 
-static uint16_t pos_spo2 = 2;
-static uint16_t pos_hr = 3;
+static uint8_t pos[5];
 
 static void blvl_ccc_cfg_changed(const struct bt_gatt_attr *attr, uint16_t value)
 {
@@ -25,9 +24,18 @@ static ssize_t read_blsc(struct bt_conn *conn, const struct bt_gatt_attr *attr,
                              sizeof(pos_blsc));
 }
 
+static ssize_t read_spo2(struct bt_conn *conn, const struct bt_gatt_attr *attr, void *buf, uint16_t len, uint16_t offset)
+{
+	return bt_gatt_attr_read(conn, attr, buf, len, offset, &pos, sizeof(pos));
+}
+
 /* Service Declaration */
 static struct bt_gatt_attr attrs[] = {
     BT_GATT_PRIMARY_SERVICE(BT_UUID_POS),
+
+	BT_GATT_CHARACTERISTIC(BT_UUID_POS_PLX_POINT, BT_GATT_CHRC_READ),
+	BT_GATT_DESCRIPTOR(BT_UUID_POS_PLX_POINT, BT_GATT_PERM_READ, read_spo2, NULL, NULL),
+
     BT_GATT_CHARACTERISTIC(BT_UUID_POS_PLX_CONTINUOUS, BT_GATT_CHRC_NOTIFY),
     BT_GATT_DESCRIPTOR(BT_UUID_POS_PLX_CONTINUOUS, BT_GATT_PERM_READ, NULL,
                        NULL, NULL),
@@ -37,12 +45,11 @@ static struct bt_gatt_attr attrs[] = {
 
 void pos_notify(int16_t spo2, int16_t pulserate)
 {    
-	static uint8_t pos[5];
 
 	pos[0] = 0x0; /* uint8, no sensor contact */
-	pos[1] = 0;
+	pos[1] = 0x10;
 	pos[2] = spo2;
-	pos[3] = 0;
+	pos[3] = 0x10;
 	pos[4] = pulserate;
 
 	bt_gatt_notify(NULL, &attrs[2], &pos, sizeof(pos));
