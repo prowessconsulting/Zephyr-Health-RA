@@ -93,9 +93,9 @@ void max30100_pulse_oximeter_update(struct device *i2c_dev)
                 max30100_pulse_oximeter_heartrate = (uint8_t)hrs;
                 max30100_pulse_oximeter_temperature = (int16_t)(max30100_get_temperature(i2c_dev) * 100);
 
-                printk("MAX30100: Temperature: %d / 100 C\n", max30100_pulse_oximeter_temperature);
-                printk("MAX30100: Heartrate: %d bpm\n", max30100_pulse_oximeter_heartrate);
-                printk("MAX30100: SpO2: %d %%\n", max30100_pulse_oximeter_spo2);
+           //     printk("MAX30100: Temperature: %d / 100 C\n", max30100_pulse_oximeter_temperature);
+           //     printk("MAX30100: Heartrate: %d bpm\n", max30100_pulse_oximeter_heartrate);
+           //     printk("MAX30100: SpO2: %d %%\n", max30100_pulse_oximeter_spo2);
             }
         }
         else if (max30100_pulse_oximeter_state == PULSEOXIMETER_STATE_DETECTING)
@@ -126,7 +126,7 @@ void max30100_pulse_oximeter_update(struct device *i2c_dev)
 
         if (changed)
         {
-            printk("MAX30100: Adjusting Red LED current to %d\n", redLedPower);
+        //    printk("MAX30100: Adjusting Red LED current to %d\n", redLedPower);
             max30100_set_leds_current(i2c_dev, IR_LED_CURRENT, redLedPower);
             tsLastCurrentAdjustment = time;
         }

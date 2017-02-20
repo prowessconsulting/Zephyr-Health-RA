@@ -129,7 +129,7 @@ void main(void)
 			axis_y = (int16_t)(sensor_value_normalize(&sensor_value_ast[1]) * 1000.0);
 			axis_z = (int16_t)(sensor_value_normalize(&sensor_value_ast[2]) * 1000.0);
 
-			printk("Accel: %d %d %d\n", axis_x, axis_y, axis_z);
+			// printk("Accel: %d %d %d\n", axis_x, axis_y, axis_z);
 
 			data.accel_x = (axis_x + data.accel_x) / 2;
 			data.accel_y = (axis_y + data.accel_y) / 2;
@@ -141,7 +141,7 @@ void main(void)
 			axis_y = (int16_t)(sensor_value_normalize(&sensor_value_ast[1]) * 1000.0);
 			axis_z = (int16_t)(sensor_value_normalize(&sensor_value_ast[2]) * 1000.0);
 
-			printk("Gyro : %d %d %d\n", axis_x, axis_y, axis_z);
+			// printk("Gyro : %d %d %d\n", axis_x, axis_y, axis_z);
 
 			data.gyro_x = (axis_x + data.gyro_x) / 2;
 			data.gyro_y = (axis_y + data.gyro_y) / 2;
