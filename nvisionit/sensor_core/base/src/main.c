@@ -43,8 +43,7 @@ QUARK_SE_IPM_DEFINE(health_sensor_ipm, 0, QUARK_SE_IPM_OUTBOUND);
 struct device *i2c_dev;
 struct device *health_ipm;
 
-struct sensor_value accel_sensor_value_ast[3];
-struct sensor_value gyro_sensor_value_ast[3];
+struct sensor_value sensor_value_ast[3];
 
 struct health_data
 {
@@ -59,48 +58,26 @@ struct health_data
 	int16_t accel_z;
 };
 
-static inline int16_t sensor_value_normalize(struct sensor_value *val)
+static double sensor_value_normalize(struct sensor_value* val)
 {
-	int32_t val1, val2;
-
 	double value;
 
 	switch (val->type) {
 	case SENSOR_VALUE_TYPE_INT:
-		value = (double) val->val1;
+	    value = (double)(val->val1);
+	    break;
 	case SENSOR_VALUE_TYPE_INT_PLUS_MICRO:
-		if (val->val2 == 0) {
-			value =  (double) val->val1;
-		}
-
-		/* normalize value */
-		if (val->val1 < 0 && val->val2 > 0) {
-			val1 = val->val1 + 1;
-			val2 = val->val2 - 1000000;
-		} else {
-			val1 = val->val1;
-			val2 = val->val2;
-		}
-
-		/* print value to buffer */
-		if (val1 > 0 || (val1 == 0 && val2 > 0)) {
-			value =  val1 + val2 / 1000000;
-		} else if (val1 == 0 && val2 < 0) {
-			value =  val2 / -1000000;
-		} else {
-			value =  val1 + val2 / -1000000;
-		}
+		value = (double)(val->val1);
+		value += ((double)(val->val2)) * 0.000001;
+	    break;
 	case SENSOR_VALUE_TYPE_DOUBLE:
-		value =  val->dval;
+	    value = val->dval;
+	    break;
 	default:
-		value =  0;
+		value = 0;
+	    break;
 	}
-
-	if(value < 0){
-		value = -value;
-	}
-
-	return (int16_t) (value * 1000);
+	return value;
 }
 
 void main(void)
@@ -131,26 +108,14 @@ void main(void)
 	printk("Polling the MAX30100\n");
 
 	struct health_data data;
+	int16_t axis_x = 0; 
+	int16_t axis_y = 0;
+	int16_t axis_z = 0;
 
     uint64_t lastSampleTime = 0;
 	while(1){
 	    time = k_uptime_get();
 	    max30100_pulse_oximeter_update(i2c_dev);
-		if((time - lastSampleTime) > 50)
-		{		
-			if(sample_update() >= 0)
-			{
-				get_accel_data(accel_sensor_value_ast);
-				get_gyro_data(gyro_sensor_value_ast);	
-				data.gyro_x = max(sensor_value_normalize(&(gyro_sensor_value_ast[0])), data.gyro_x);
-				data.gyro_y = max(sensor_value_normalize(&(gyro_sensor_value_ast[1])), data.gyro_y);
-				data.gyro_z = max(sensor_value_normalize(&(gyro_sensor_value_ast[2])), data.gyro_z);
-				data.accel_x = max(sensor_value_normalize(&(accel_sensor_value_ast[0])), data.accel_x);
-				data.accel_y = max(sensor_value_normalize(&(accel_sensor_value_ast[1])), data.accel_y);
-				data.accel_z = max(sensor_value_normalize(&(accel_sensor_value_ast[2])), data.accel_z);
-			}
-		}
-
 
 		if((time - lastSampleTime) > 500)
 		{	
@@ -158,20 +123,39 @@ void main(void)
 			data.spo2 = max30100_pulse_oximeter_spo2;
 			data.temperature = max30100_pulse_oximeter_temperature;
 			
+			get_accel_data(sensor_value_ast);	
+
+			axis_x = (int16_t)(sensor_value_normalize(&sensor_value_ast[0]) * 1000.0);
+			axis_y = (int16_t)(sensor_value_normalize(&sensor_value_ast[1]) * 1000.0);
+			axis_z = (int16_t)(sensor_value_normalize(&sensor_value_ast[2]) * 1000.0);
+
+			printk("Accel: %d %d %d\n", axis_x, axis_y, axis_z);
+
+			data.accel_x = (axis_x + data.accel_x) / 2;
+			data.accel_y = (axis_y + data.accel_y) / 2;
+			data.accel_z = (axis_z + data.accel_z) / 2;
+
+			get_gyro_data(sensor_value_ast);		
+
+			axis_x = (int16_t)(sensor_value_normalize(&sensor_value_ast[0]) * 1000.0);
+			axis_y = (int16_t)(sensor_value_normalize(&sensor_value_ast[1]) * 1000.0);
+			axis_z = (int16_t)(sensor_value_normalize(&sensor_value_ast[2]) * 1000.0);
+
+			printk("Gyro : %d %d %d\n", axis_x, axis_y, axis_z);
+
+			data.gyro_x = (axis_x + data.gyro_x) / 2;
+			data.gyro_y = (axis_y + data.gyro_y) / 2;
+			data.gyro_z = (axis_z + data.gyro_z) / 2;
+
+		    lastSampleTime = k_uptime_get();
+            sample_update();
+
 			ret = ipm_send(health_ipm, 1, IPM_ID_BMI_ALL, &data, sizeof(data));
 			if (ret)
 			{
 				printk("Failed to send Health message, error (%d)\n", ret);
-			}
+			}		
 
-			data.gyro_x = 0;
-			data.gyro_y = 0;
-			data.gyro_z = 0;
-			data.accel_x = 0;
-			data.accel_y = 0;
-			data.accel_z = 0;
-
-			lastSampleTime = time;			
 		}
 	}	
 }

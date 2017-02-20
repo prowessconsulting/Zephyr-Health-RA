@@ -27,7 +27,7 @@
 #define SLEEPTIME	300
 
 
-void bmi160_sensor_init(void);
+void bmi160_sensor_init();
 int sample_update();
 void get_gyro_data(struct sensor_value* sensor_data_ps);
 void get_accel_data(struct sensor_value* sensor_data_ps);

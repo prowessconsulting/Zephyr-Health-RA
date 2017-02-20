@@ -2,7 +2,7 @@
 
 extern uint8_t pbuf[1024];
 extern uint8_t *pos;
-struct device *bmi160;
+static struct device *bmi160;
 
 /*
  * The values in the following map are the expected values that the
@@ -15,7 +15,7 @@ struct sensor_value acc_calib[] = {
 	{SENSOR_VALUE_TYPE_INT_PLUS_MICRO, { {9, 806650} } }, /* Z */
 };
 
-static int auto_calibration()
+static int auto_calibration(struct device* bmi160)
 {
 	/* calibrate accelerometer */
 	if (sensor_attr_set(bmi160, SENSOR_CHAN_ACCEL_ANY,
