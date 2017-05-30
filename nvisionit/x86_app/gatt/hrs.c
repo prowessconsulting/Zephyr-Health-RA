@@ -61,15 +61,17 @@ static struct bt_gatt_attr attrs[] = {
 	BT_GATT_DESCRIPTOR(BT_UUID_HRS_BODY_SENSOR, BT_GATT_PERM_READ,
 			   read_blsc, NULL, NULL),
 	BT_GATT_CHARACTERISTIC(BT_UUID_HRS_CONTROL_POINT, BT_GATT_CHRC_WRITE),
-
+	/* TODO: Add write permission and callback */
+	BT_GATT_DESCRIPTOR(BT_UUID_HRS_CONTROL_POINT, BT_GATT_PERM_READ, NULL,
+			   NULL, NULL),
 };
 
-void hrs_notify(uint8_t heartrate)
+void hrs_notify(uint8_t *heartrate)
 {
 	static uint8_t hrm[2];
 
-	hrm[0] = 0x0; /* uint8, no sensor contact */
-	hrm[1] = heartrate;
+	hrm[0] = 0x06; /* uint8, sensor contact */
+	hrm[1] = *heartrate;
 
 	bt_gatt_notify(NULL, &attrs[2], &hrm, sizeof(hrm));
 }
